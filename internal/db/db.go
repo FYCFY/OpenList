@@ -23,6 +23,10 @@ func Init(d *gorm.DB) {
 		new(model.SharingDB),
 		new(model.WebdavSession),
 		new(model.WebdavBlock),
+		new(model.LoginLog),
+		new(model.UploadLog),
+		new(model.SystemLog),
+		new(model.Device),
 	)
 	if err != nil {
 		log.Fatalf("failed migrate database: %s", err.Error())

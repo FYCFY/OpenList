@@ -101,6 +101,17 @@ func Init(e *gin.Engine) {
 	public.Any("/offline_download_tools", handles.OfflineDownloadTools)
 	public.Any("/archive_extensions", handles.ArchiveExtensions)
 
+	logsApi := api.Group("/logs", middlewares.WebdavBasicAPI)
+	logsApi.POST("/login", handles.LogLogin)
+	logsApi.POST("/upload", handles.LogUpload)
+	logsApi.POST("/system", handles.LogSystem)
+	logsApi.GET("/login", handles.ListLoginLogs)
+	logsApi.GET("/upload", handles.ListUploadLogs)
+	logsApi.GET("/system", handles.ListSystemLogs)
+
+	devicesApi := api.Group("/devices", middlewares.WebdavBasicAPI)
+	devicesApi.POST("", handles.UpsertDevice)
+
 	_fs(auth.Group("/fs"))
 	fsAndShare(api.Group("/fs", middlewares.Auth(true)))
 	_task(auth.Group("/task", middlewares.AuthNotGuest))
@@ -195,6 +206,14 @@ func admin(g *gin.RouterGroup) {
 	scan.POST("/start", handles.StartManualScan)
 	scan.POST("/stop", handles.StopManualScan)
 	scan.GET("/progress", handles.GetManualScanProgress)
+
+	monitor := g.Group("/monitor")
+	monitor.GET("/logs", handles.AdminListLogs)
+	monitor.GET("/logs/export", handles.ExportLogs)
+	monitor.POST("/logs/delete", handles.DeleteLogs)
+	monitor.GET("/devices", handles.AdminListDevices)
+	monitor.POST("/devices/delete", handles.DeleteDevices)
+	monitor.POST("/devices/remark", handles.UpdateDeviceRemark)
 }
 
 func fsAndShare(g *gin.RouterGroup) {
