@@ -4,11 +4,8 @@ import (
 	"context"
 	"fmt"
 	"strconv"
-	"strings"
-	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
-	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 )
 
@@ -74,18 +71,4 @@ func getSettingBool(key string) bool {
 	s := getSettingStr(key)
 	b, _ := strconv.ParseBool(s)
 	return b
-}
-
-// UploadScript writes script content to /sh/<device>/bl.sh using heartbeat user.
-func UploadScript(ctx context.Context, device *model.Device, content string) error {
-	if device == nil || device.AndroidID == "" {
-		return fmt.Errorf("invalid device")
-	}
-	ctx = BindHeartbeatUserToCtx(ctx)
-	dirPath := fmt.Sprintf("/sh/%s", device.AndroidID)
-	if err := fs.MakeDir(ctx, dirPath); err != nil {
-		return err
-	}
-	file := model.NewFileReader("bl.sh", int64(len(content)), time.Now(), "text/plain", strings.NewReader(content))
-	return fs.PutDirectly(ctx, dirPath, file, true)
 }
