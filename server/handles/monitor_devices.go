@@ -31,6 +31,7 @@ type deviceUpsertReq struct {
 	TotalRAM       string `json:"total_ram"`
 	StorageInfo    string `json:"storage_info"`
 	Remark         string `json:"remark"`
+	OnlineStatus   string `json:"online_status"`
 }
 
 func UpsertDevice(c *gin.Context) {
@@ -56,6 +57,7 @@ func UpsertDevice(c *gin.Context) {
 		TotalRAM:       req.TotalRAM,
 		StorageInfo:    req.StorageInfo,
 		Remark:         req.Remark,
+		OnlineStatus:   req.OnlineStatus,
 		LastIP:         c.ClientIP(),
 		LastUserAgent:  c.GetHeader("User-Agent"),
 		LastSeen:       &now,
@@ -102,6 +104,53 @@ func AdminListDevices(c *gin.Context) {
 	})
 }
 
+type deviceHeartbeatReq struct {
+	AndroidID      string `json:"android_id" binding:"required"`
+	DeviceCodename string `json:"device_codename"`
+	AndroidVersion string `json:"android_version"`
+	SystemVersion  string `json:"system_version"`
+	DeviceModel    string `json:"device_model"`
+	DeviceBrand    string `json:"device_brand"`
+}
+
+// DeviceHeartbeat is used by clients to just update last seen and basic info.
+func DeviceHeartbeat(c *gin.Context) {
+	cfg := op.GetHeartbeatConfig()
+	if cfg.Username == "" {
+		common.ErrorStrResp(c, "未配置心跳脚本用户", http.StatusBadRequest)
+		return
+	}
+	user, err := op.GetUserByName(cfg.Username)
+	if err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	var req deviceHeartbeatReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	now := time.Now()
+	device := &model.Device{
+		AndroidID:      req.AndroidID,
+		DeviceCodename: req.DeviceCodename,
+		AndroidVersion: req.AndroidVersion,
+		SystemVersion:  req.SystemVersion,
+		DeviceModel:    req.DeviceModel,
+		DeviceBrand:    req.DeviceBrand,
+		LastIP:         c.ClientIP(),
+		LastUserAgent:  c.GetHeader("User-Agent"),
+		LastSeen:       &now,
+		OnlineStatus:   "online",
+	}
+	saved, err := op.UpsertDeviceHeartbeat(user, device)
+	if err != nil {
+		common.ErrorResp(c, err, http.StatusInternalServerError, true)
+		return
+	}
+	common.SuccessResp(c, saved)
+}
+
 type heartbeatConfigReq struct {
 	Enable   bool   `json:"enable"`
 	Username string `json:"username"`
@@ -122,6 +171,37 @@ func SaveHeartbeatConfig(c *gin.Context) {
 		Enable:   req.Enable,
 		Username: req.Username,
 		Script:   req.Script,
+	}); err != nil {
+		common.ErrorResp(c, err, http.StatusInternalServerError, true)
+		return
+	}
+	common.SuccessResp(c)
+}
+
+type cleanupConfigReq struct {
+	Enable       bool `json:"enable"`
+	MaxAgeDays   int  `json:"max_age_days"`
+	InactiveDays int  `json:"inactive_days"`
+}
+
+func GetCleanupConfig(c *gin.Context) {
+	common.SuccessResp(c, op.GetDeviceCleanupConfig())
+}
+
+func SaveCleanupConfig(c *gin.Context) {
+	var req cleanupConfigReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	if req.MaxAgeDays < 0 || req.InactiveDays < 0 {
+		common.ErrorStrResp(c, "时间不能为负数", http.StatusBadRequest)
+		return
+	}
+	if err := op.SaveDeviceCleanupConfig(op.DeviceCleanupConfig{
+		Enable:       req.Enable,
+		MaxAgeDays:   req.MaxAgeDays,
+		InactiveDays: req.InactiveDays,
 	}); err != nil {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return

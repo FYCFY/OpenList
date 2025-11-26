@@ -18,6 +18,7 @@ type Device struct {
 	KernelVersion  string     `json:"kernel_version" gorm:"size:128"`
 	TotalRAM       string     `json:"total_ram" gorm:"size:64"`
 	StorageInfo    string     `json:"storage_info" gorm:"size:128"`
+	OnlineStatus   string     `json:"online_status" gorm:"size:32;index"`
 	LastIP         string     `json:"last_ip" gorm:"size:64;index"`
 	LastUserAgent  string     `json:"last_user_agent" gorm:"size:512"`
 	Username       string     `json:"username" gorm:"size:128;index"`

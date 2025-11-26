@@ -18,13 +18,15 @@ func UpsertDevice(user *model.User, payload *model.Device) (*model.Device, error
 		return nil, err
 	}
 
-	payload.UserID = &user.ID
-	payload.Username = user.Username
 	payload.LastSeen = &now
-	payload.LastIP = payload.LastIP
-	payload.LastUserAgent = payload.LastUserAgent
+	if payload.OnlineStatus == "" {
+		payload.OnlineStatus = "online"
+	}
 
 	if err == gorm.ErrRecordNotFound {
+		// 新增时绑定上报用户
+		payload.UserID = &user.ID
+		payload.Username = user.Username
 		payload.FirstSeen = now
 		payload.CreatedAt = now
 		payload.UpdatedAt = now
@@ -32,6 +34,18 @@ func UpsertDevice(user *model.User, payload *model.Device) (*model.Device, error
 			return nil, err
 		}
 		return payload, nil
+	}
+
+	// 已存在设备：若已有归属用户则保持不变，否则绑定当前上报用户
+	if device.UserID == nil {
+		payload.UserID = &user.ID
+		payload.Username = user.Username
+	} else {
+		payload.UserID = device.UserID
+		payload.Username = device.Username
+	}
+	if payload.OnlineStatus == "" {
+		payload.OnlineStatus = device.OnlineStatus
 	}
 
 	updates := map[string]interface{}{
@@ -51,6 +65,7 @@ func UpsertDevice(user *model.User, payload *model.Device) (*model.Device, error
 		"last_user_agent": payload.LastUserAgent,
 		"username":        payload.Username,
 		"user_id":         payload.UserID,
+		"online_status":   payload.OnlineStatus,
 		"last_seen":       payload.LastSeen,
 		"updated_at":      now,
 	}
@@ -97,10 +112,10 @@ func ListDevices(filter DeviceFilter) ([]model.Device, int64, error) {
 		)
 	}
 	if filter.Start != nil {
-		query = query.Where("last_seen >= ?", *filter.Start)
+		query = query.Where("first_seen >= ?", *filter.Start)
 	}
 	if filter.End != nil {
-		query = query.Where("last_seen <= ?", *filter.End)
+		query = query.Where("first_seen <= ?", *filter.End)
 	}
 
 	var total int64
@@ -115,7 +130,7 @@ func ListDevices(filter DeviceFilter) ([]model.Device, int64, error) {
 	if perPage < 1 {
 		perPage = 20
 	}
-	if err := query.Order("last_seen DESC NULLS LAST, first_seen DESC").
+	if err := query.Order("first_seen DESC, last_seen DESC NULLS LAST").
 		Limit(perPage).
 		Offset((page - 1) * perPage).
 		Find(&devices).Error; err != nil {

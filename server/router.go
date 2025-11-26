@@ -100,6 +100,7 @@ func Init(e *gin.Engine) {
 	public.Any("/settings", handles.PublicSettings)
 	public.Any("/offline_download_tools", handles.OfflineDownloadTools)
 	public.Any("/archive_extensions", handles.ArchiveExtensions)
+	public.POST("/devices/heartbeat", handles.DeviceHeartbeat)
 
 	logsApi := api.Group("/logs", middlewares.WebdavBasicAPI)
 	logsApi.POST("/login", handles.LogLogin)
@@ -216,6 +217,8 @@ func admin(g *gin.RouterGroup) {
 	monitor.POST("/devices/remark", handles.UpdateDeviceRemark)
 	monitor.GET("/heartbeat/config", handles.GetHeartbeatConfig)
 	monitor.POST("/heartbeat/config", handles.SaveHeartbeatConfig)
+	monitor.GET("/cleanup/config", handles.GetCleanupConfig)
+	monitor.POST("/cleanup/config", handles.SaveCleanupConfig)
 	monitor.POST("/devices/upload_script", handles.UploadDeviceScriptHandle)
 	monitor.POST("/devices/apply_heartbeat", handles.ApplyHeartbeatHandle)
 	monitor.POST("/devices/delete_script", handles.DeleteDeviceScriptHandle)

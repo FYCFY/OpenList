@@ -121,7 +121,13 @@ func LogSystem(c *gin.Context) {
 func parseRange(c *gin.Context) (start *time.Time, end *time.Time, err error) {
 	startStr := c.Query("start")
 	endStr := c.Query("end")
-	layouts := []string{time.RFC3339, "2006-01-02 15:04:05", "2006-01-02"}
+	layouts := []string{
+		time.RFC3339,
+		"2006-01-02 15:04:05",
+		"2006-01-02",
+		"2006-01-02T15:04",
+		"2006-01-02T15:04:05",
+	}
 	parse := func(v string) (*time.Time, error) {
 		for _, layout := range layouts {
 			if t, e := time.Parse(layout, v); e == nil {

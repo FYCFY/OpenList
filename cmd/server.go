@@ -48,6 +48,7 @@ the address is defined in config file`,
 		bootstrap.LoadStorages()
 		bootstrap.InitTaskManager()
 		go op.PeriodicCleanExpiredUsers(context.Background(), time.Minute)
+		op.StartDeviceCleanupScheduler()
 		if !flags.Debug && !flags.Dev {
 			gin.SetMode(gin.ReleaseMode)
 		}
