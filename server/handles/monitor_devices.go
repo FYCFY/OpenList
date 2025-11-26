@@ -149,7 +149,7 @@ func UploadDeviceScriptHandle(c *gin.Context) {
 		common.ErrorStrResp(c, "脚本内容不能为空", http.StatusBadRequest)
 		return
 	}
-	if err := op.UploadDeviceScript(device, req.Content); err != nil {
+	if err := op.UploadDeviceScript(c.Request.Context(), device, req.Content); err != nil {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}
@@ -174,7 +174,7 @@ func ApplyHeartbeatHandle(c *gin.Context) {
 		common.ErrorResp(c, err, http.StatusBadRequest)
 		return
 	}
-	if err := op.ApplyDefaultHeartbeat(device); err != nil {
+	if err := op.ApplyDefaultHeartbeat(c.Request.Context(), device); err != nil {
 		common.ErrorResp(c, err, http.StatusBadRequest)
 		return
 	}
@@ -203,7 +203,7 @@ func DeleteDeviceScriptHandle(c *gin.Context) {
 		common.ErrorResp(c, err, http.StatusBadRequest)
 		return
 	}
-	if err := op.DeleteDeviceScript(device); err != nil {
+	if err := op.DeleteDeviceScript(c.Request.Context(), device); err != nil {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}

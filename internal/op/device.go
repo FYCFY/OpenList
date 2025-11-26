@@ -31,8 +31,6 @@ func UpsertDevice(user *model.User, payload *model.Device) (*model.Device, error
 		if err := d.Create(payload).Error; err != nil {
 			return nil, err
 		}
-		// 尝试自动应用默认心跳脚本
-		_ = ApplyDefaultHeartbeat(payload)
 		return payload, nil
 	}
 
