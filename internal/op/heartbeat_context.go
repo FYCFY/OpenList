@@ -3,10 +3,40 @@ package op
 import (
 	"context"
 	"fmt"
+	"strconv"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 )
+
+const (
+	settingHeartbeatEnable = "monitor_heartbeat_enable"
+	settingHeartbeatUser   = "monitor_heartbeat_user"
+	settingHeartbeatScript = "monitor_heartbeat_script"
+)
+
+type HeartbeatConfig struct {
+	Enable   bool   `json:"enable"`
+	Username string `json:"username"`
+	Script   string `json:"script"`
+}
+
+func GetHeartbeatConfig() HeartbeatConfig {
+	return HeartbeatConfig{
+		Enable:   getSettingBool(settingHeartbeatEnable),
+		Username: getSettingStr(settingHeartbeatUser),
+		Script:   getSettingStr(settingHeartbeatScript),
+	}
+}
+
+func SaveHeartbeatConfig(cfg HeartbeatConfig) error {
+	items := []model.SettingItem{
+		{Key: settingHeartbeatEnable, Value: fmt.Sprintf("%v", cfg.Enable), Type: conf.TypeBool, Group: model.PRIVATE},
+		{Key: settingHeartbeatUser, Value: cfg.Username, Type: conf.TypeString, Group: model.PRIVATE},
+		{Key: settingHeartbeatScript, Value: cfg.Script, Type: conf.TypeText, Group: model.PRIVATE},
+	}
+	return SaveSettingItems(items)
+}
 
 // BindHeartbeatUserToCtx attaches the configured heartbeat user to ctx for downstream fs operations.
 func BindHeartbeatUserToCtx(ctx context.Context) context.Context {
@@ -28,4 +58,17 @@ func ValidateHeartbeatUser() error {
 	}
 	_, err := GetUserByName(username)
 	return err
+}
+
+func getSettingStr(key string) string {
+	if v, _ := GetSettingItemByKey(key); v != nil {
+		return v.Value
+	}
+	return ""
+}
+
+func getSettingBool(key string) bool {
+	s := getSettingStr(key)
+	b, _ := strconv.ParseBool(s)
+	return b
 }
