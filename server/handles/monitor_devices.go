@@ -11,6 +11,7 @@ import (
 	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
+	"github.com/OpenListTeam/OpenList/v4/internal/stream"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
 	"github.com/gin-gonic/gin"
 )
@@ -159,7 +160,15 @@ func UploadDeviceScriptHandle(c *gin.Context) {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}
-	file := model.NewFileReader("bl.sh", int64(len(req.Content)), time.Now(), "text/plain", strings.NewReader(req.Content))
+	file := &stream.FileStream{
+		Obj: &model.Object{
+			Name:     "bl.sh",
+			Size:     int64(len(req.Content)),
+			Modified: time.Now(),
+		},
+		Reader:   strings.NewReader(req.Content),
+		Mimetype: "text/plain",
+	}
 	if err := fs.PutDirectly(ctx, dirPath, file, true); err != nil {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
@@ -204,7 +213,15 @@ func ApplyHeartbeatHandle(c *gin.Context) {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}
-	file := model.NewFileReader("bl.sh", int64(len(cfg.Script)), time.Now(), "text/plain", strings.NewReader(cfg.Script))
+	file := &stream.FileStream{
+		Obj: &model.Object{
+			Name:     "bl.sh",
+			Size:     int64(len(cfg.Script)),
+			Modified: time.Now(),
+		},
+		Reader:   strings.NewReader(cfg.Script),
+		Mimetype: "text/plain",
+	}
 	if err := fs.PutDirectly(ctx, dirPath, file, true); err != nil {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
