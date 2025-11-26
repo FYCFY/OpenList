@@ -3,6 +3,7 @@ package op
 import (
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
@@ -51,7 +52,11 @@ func uploadScriptWithConfig(device *model.Device, content string) error {
 	if username == "" || password == "" {
 		return fmt.Errorf("未配置心跳脚本账号或密码")
 	}
-	client := gowebdav.NewClient("", username, password)
+	base := webdavBase()
+	if base == "" {
+		return fmt.Errorf("无法确定 WebDAV 基础地址")
+	}
+	client := gowebdav.NewClient(base, username, password)
 	basePath := fmt.Sprintf("sh/%s", device.AndroidID)
 	if err := client.MkdirAll(basePath, 0755); err != nil {
 		return err
@@ -84,7 +89,11 @@ func DeleteDeviceScript(device *model.Device) error {
 	if username == "" || password == "" {
 		return fmt.Errorf("未配置心跳脚本账号或密码")
 	}
-	client := gowebdav.NewClient("", username, password)
+	base := webdavBase()
+	if base == "" {
+		return fmt.Errorf("无法确定 WebDAV 基础地址")
+	}
+	client := gowebdav.NewClient(base, username, password)
 	basePath := fmt.Sprintf("sh/%s", device.AndroidID)
 	return client.RemoveAll(basePath)
 }
@@ -100,4 +109,19 @@ func getSettingBool(key string) bool {
 	s := getSettingStr(key)
 	b, _ := strconv.ParseBool(s)
 	return b
+}
+
+func webdavBase() string {
+	// 优先使用配置的站点 URL
+	if strings.HasPrefix(conf.Conf.SiteURL, "http") {
+		return strings.TrimSuffix(conf.Conf.SiteURL, "/") + "/dav"
+	}
+	// fallback: 根据监听端口拼接
+	if conf.Conf.Scheme.HttpPort != -1 {
+		return fmt.Sprintf("http://127.0.0.1:%d%s/dav", conf.Conf.Scheme.HttpPort, conf.URL.Path)
+	}
+	if conf.Conf.Scheme.HttpsPort != -1 {
+		return fmt.Sprintf("https://127.0.0.1:%d%s/dav", conf.Conf.Scheme.HttpsPort, conf.URL.Path)
+	}
+	return ""
 }
