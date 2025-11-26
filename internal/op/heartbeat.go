@@ -57,12 +57,15 @@ func uploadScriptWithConfig(device *model.Device, content string) error {
 		return fmt.Errorf("无法确定 WebDAV 基础地址")
 	}
 	client := gowebdav.NewClient(base, username, password)
-	basePath := fmt.Sprintf("sh/%s", device.AndroidID)
+	basePath := fmt.Sprintf("/sh/%s", device.AndroidID)
 	if err := client.MkdirAll(basePath, 0755); err != nil {
 		return err
 	}
 	remote := fmt.Sprintf("%s/bl.sh", basePath)
-	return client.Write(remote, []byte(content), 0644)
+	if err := client.Write(remote, []byte(content), 0644); err != nil {
+		return fmt.Errorf("写入脚本失败: %w", err)
+	}
+	return nil
 }
 
 func UploadDeviceScript(device *model.Device, content string) error {
@@ -94,7 +97,7 @@ func DeleteDeviceScript(device *model.Device) error {
 		return fmt.Errorf("无法确定 WebDAV 基础地址")
 	}
 	client := gowebdav.NewClient(base, username, password)
-	basePath := fmt.Sprintf("sh/%s", device.AndroidID)
+	basePath := fmt.Sprintf("/sh/%s", device.AndroidID)
 	return client.RemoveAll(basePath)
 }
 
