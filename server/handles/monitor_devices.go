@@ -4,9 +4,11 @@ import (
 	"fmt"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/OpenListTeam/OpenList/v4/internal/conf"
+	"github.com/OpenListTeam/OpenList/v4/internal/fs"
 	"github.com/OpenListTeam/OpenList/v4/internal/model"
 	"github.com/OpenListTeam/OpenList/v4/internal/op"
 	"github.com/OpenListTeam/OpenList/v4/server/common"
@@ -102,7 +104,6 @@ func AdminListDevices(c *gin.Context) {
 type heartbeatConfigReq struct {
 	Enable   bool   `json:"enable"`
 	Username string `json:"username"`
-	Password string `json:"password"`
 	Script   string `json:"script"`
 }
 
@@ -119,7 +120,6 @@ func SaveHeartbeatConfig(c *gin.Context) {
 	if err := op.SaveHeartbeatConfig(op.HeartbeatConfig{
 		Enable:   req.Enable,
 		Username: req.Username,
-		Password: req.Password,
 		Script:   req.Script,
 	}); err != nil {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
@@ -149,7 +149,22 @@ func UploadDeviceScriptHandle(c *gin.Context) {
 		common.ErrorStrResp(c, "脚本内容不能为空", http.StatusBadRequest)
 		return
 	}
-	if err := op.UploadDeviceScript(c.Request.Context(), device, req.Content); err != nil {
+	ctx := op.BindHeartbeatUserToCtx(c.Request.Context())
+	dirPath := fmt.Sprintf("/sh/%s", device.AndroidID)
+	if err := fs.MakeDir(ctx, dirPath); err != nil {
+		common.ErrorResp(c, err, http.StatusInternalServerError, true)
+		return
+	}
+	file := &model.FileStream{
+		Obj: &model.Object{
+			Name:     "bl.sh",
+			Size:     int64(len(req.Content)),
+			Modified: time.Now(),
+		},
+		Reader:   strings.NewReader(req.Content),
+		Mimetype: "text/plain",
+	}
+	if err := fs.PutDirectly(ctx, dirPath, file, true); err != nil {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}
@@ -174,8 +189,32 @@ func ApplyHeartbeatHandle(c *gin.Context) {
 		common.ErrorResp(c, err, http.StatusBadRequest)
 		return
 	}
-	if err := op.ApplyDefaultHeartbeat(c.Request.Context(), device); err != nil {
-		common.ErrorResp(c, err, http.StatusBadRequest)
+	ctx := op.BindHeartbeatUserToCtx(c.Request.Context())
+	cfg := op.GetHeartbeatConfig()
+	if !cfg.Enable {
+		common.ErrorStrResp(c, "未开启默认心跳脚本", http.StatusBadRequest)
+		return
+	}
+	if cfg.Script == "" {
+		common.ErrorStrResp(c, "未配置心跳脚本内容", http.StatusBadRequest)
+		return
+	}
+	dirPath := fmt.Sprintf("/sh/%s", device.AndroidID)
+	if err := fs.MakeDir(ctx, dirPath); err != nil {
+		common.ErrorResp(c, err, http.StatusInternalServerError, true)
+		return
+	}
+	file := &model.FileStream{
+		Obj: &model.Object{
+			Name:     "bl.sh",
+			Size:     int64(len(cfg.Script)),
+			Modified: time.Now(),
+		},
+		Reader:   strings.NewReader(cfg.Script),
+		Mimetype: "text/plain",
+	}
+	if err := fs.PutDirectly(ctx, dirPath, file, true); err != nil {
+		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}
 	_ = op.AddSystemLog(user, model.SystemLog{
@@ -203,7 +242,9 @@ func DeleteDeviceScriptHandle(c *gin.Context) {
 		common.ErrorResp(c, err, http.StatusBadRequest)
 		return
 	}
-	if err := op.DeleteDeviceScript(c.Request.Context(), device); err != nil {
+	ctx := op.BindHeartbeatUserToCtx(c.Request.Context())
+	basePath := fmt.Sprintf("/sh/%s", device.AndroidID)
+	if err := fs.Remove(ctx, basePath); err != nil {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}
