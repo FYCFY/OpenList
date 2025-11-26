@@ -257,6 +257,8 @@ func DeleteDeviceScriptHandle(c *gin.Context) {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}
+	// 同步删除设备记录
+	_ = op.DeleteDevices([]uint{device.ID})
 	_ = op.AddSystemLog(user, model.SystemLog{
 		Type:    "info",
 		Message: fmt.Sprintf("删除设备脚本: %s", device.AndroidID),
