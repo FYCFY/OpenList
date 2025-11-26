@@ -214,6 +214,11 @@ func admin(g *gin.RouterGroup) {
 	monitor.GET("/devices", handles.AdminListDevices)
 	monitor.POST("/devices/delete", handles.DeleteDevices)
 	monitor.POST("/devices/remark", handles.UpdateDeviceRemark)
+	monitor.GET("/heartbeat/config", handles.GetHeartbeatConfig)
+	monitor.POST("/heartbeat/config", handles.SaveHeartbeatConfig)
+	monitor.POST("/devices/upload_script", handles.UploadDeviceScriptHandle)
+	monitor.POST("/devices/apply_heartbeat", handles.ApplyHeartbeatHandle)
+	monitor.POST("/devices/delete_script", handles.DeleteDeviceScriptHandle)
 }
 
 func fsAndShare(g *gin.RouterGroup) {

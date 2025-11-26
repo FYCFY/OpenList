@@ -98,6 +98,123 @@ func AdminListDevices(c *gin.Context) {
 	})
 }
 
+type heartbeatConfigReq struct {
+	Enable   bool   `json:"enable"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+	Script   string `json:"script"`
+}
+
+func GetHeartbeatConfig(c *gin.Context) {
+	common.SuccessResp(c, op.GetHeartbeatConfig())
+}
+
+func SaveHeartbeatConfig(c *gin.Context) {
+	var req heartbeatConfigReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	if err := op.SaveHeartbeatConfig(op.HeartbeatConfig{
+		Enable:   req.Enable,
+		Username: req.Username,
+		Password: req.Password,
+		Script:   req.Script,
+	}); err != nil {
+		common.ErrorResp(c, err, http.StatusInternalServerError, true)
+		return
+	}
+	common.SuccessResp(c)
+}
+
+type deviceScriptReq struct {
+	ID      uint   `json:"id" binding:"required"`
+	Content string `json:"content"`
+}
+
+func UploadDeviceScriptHandle(c *gin.Context) {
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
+	var req deviceScriptReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	device, err := op.GetDeviceByID(req.ID)
+	if err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	if req.Content == "" {
+		common.ErrorStrResp(c, "脚本内容不能为空", http.StatusBadRequest)
+		return
+	}
+	if err := op.UploadDeviceScript(device, req.Content); err != nil {
+		common.ErrorResp(c, err, http.StatusInternalServerError, true)
+		return
+	}
+	_ = op.AddSystemLog(user, model.SystemLog{
+		Type:    "info",
+		Message: fmt.Sprintf("上传设备脚本: %s", device.AndroidID),
+		Source:  "device_script",
+		IP:      c.ClientIP(),
+	})
+	common.SuccessResp(c)
+}
+
+func ApplyHeartbeatHandle(c *gin.Context) {
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
+	var req deviceScriptReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	device, err := op.GetDeviceByID(req.ID)
+	if err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	if err := op.ApplyDefaultHeartbeat(device); err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	_ = op.AddSystemLog(user, model.SystemLog{
+		Type:    "info",
+		Message: fmt.Sprintf("应用默认心跳脚本: %s", device.AndroidID),
+		Source:  "device_script",
+		IP:      c.ClientIP(),
+	})
+	common.SuccessResp(c)
+}
+
+type deleteDeviceReq struct {
+	ID uint `json:"id" binding:"required"`
+}
+
+func DeleteDeviceScriptHandle(c *gin.Context) {
+	user := c.Request.Context().Value(conf.UserKey).(*model.User)
+	var req deleteDeviceReq
+	if err := c.ShouldBindJSON(&req); err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	device, err := op.GetDeviceByID(req.ID)
+	if err != nil {
+		common.ErrorResp(c, err, http.StatusBadRequest)
+		return
+	}
+	if err := op.DeleteDeviceScript(device); err != nil {
+		common.ErrorResp(c, err, http.StatusInternalServerError, true)
+		return
+	}
+	_ = op.AddSystemLog(user, model.SystemLog{
+		Type:    "info",
+		Message: fmt.Sprintf("删除设备脚本: %s", device.AndroidID),
+		Source:  "device_script",
+		IP:      c.ClientIP(),
+	})
+	common.SuccessResp(c)
+}
+
 type deleteDevicesReq struct {
 	IDs []uint `json:"ids" binding:"required"`
 }

@@ -158,7 +158,7 @@ func listLogsInternal(c *gin.Context, defaultType string, clientShape bool) {
 	}
 	page, _ := strconv.Atoi(c.DefaultQuery("page", "1"))
 	perPage, _ := strconv.Atoi(c.DefaultQuery("per_page", "20"))
-	content, total, err := op.ListLogs(op.LogFilter{
+	rawContent, total, err := op.ListLogs(op.LogFilter{
 		Type:     logType,
 		Username: username,
 		Start:    start,
@@ -170,6 +170,7 @@ func listLogsInternal(c *gin.Context, defaultType string, clientShape bool) {
 		common.ErrorResp(c, err, http.StatusInternalServerError, true)
 		return
 	}
+	content := decorateLogs(logType, rawContent)
 	if clientShape {
 		c.JSON(200, gin.H{
 			"code":    200,
@@ -284,5 +285,57 @@ func ExportLogs(c *gin.Context) {
 		}
 	default:
 		log.Warnf("unknown log type for export: %T", content)
+	}
+}
+
+func decorateLogs(logType string, content interface{}) interface{} {
+	switch logs := content.(type) {
+	case []model.LoginLog:
+		res := make([]gin.H, 0, len(logs))
+		for _, l := range logs {
+			res = append(res, gin.H{
+				"id":         l.ID,
+				"username":   l.Username,
+				"ip":         l.IP,
+				"user_agent": l.UserAgent,
+				"created_at": l.CreatedAt,
+				"type":       "login",
+			})
+		}
+		return res
+	case []model.UploadLog:
+		res := make([]gin.H, 0, len(logs))
+		for _, l := range logs {
+			res = append(res, gin.H{
+				"id":             l.ID,
+				"username":       l.Username,
+				"device_code":    l.DeviceCode,
+				"system_version": l.SystemVersion,
+				"file_name":      l.FileName,
+				"file_size":      l.FileSize,
+				"ip":             l.IP,
+				"created_at":     l.CreatedAt,
+				"type":           "upload",
+			})
+		}
+		return res
+	case []model.SystemLog:
+		res := make([]gin.H, 0, len(logs))
+		for _, l := range logs {
+			res = append(res, gin.H{
+				"id":         l.ID,
+				"username":   l.Username,
+				"log_type":   l.Type,
+				"message":    l.Message,
+				"source":     l.Source,
+				"ip":         l.IP,
+				"created_at": l.CreatedAt,
+				"type":       "system",
+			})
+		}
+		return res
+	default:
+		log.Warnf("unknown log type decorate: %T", content)
+		return content
 	}
 }
